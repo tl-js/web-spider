@@ -1,0 +1,15 @@
+#lang plai
+
+(define all-files (map path->string (directory-list "data/")))
+
+(define (documents xs)
+  (cond
+    [(null? xs) '()]
+    [else (if (or (equal? (car xs) ".DS_Store") (equal? (car xs) "stops.txt")) (documents (cdr xs)) (cons (car xs) (documents (cdr xs))))]))
+
+(define universe (documents all-files))
+
+(define (read-file file-name)
+  (file->lines (string-append "data/" file-name)))
+
+(define months '("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sept" "Oct" "Nov" "Dec" "January" "February" "March" "April" "May" "June" "July" "August" "September" "October" "November" "December"))

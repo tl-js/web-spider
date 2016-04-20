@@ -1,0 +1,3 @@
+#lang plai
+(require net/url)
+(require 2htdp/batch-io)

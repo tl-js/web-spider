@@ -19,9 +19,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; HTML PROCESSING ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Accepts a document name and returns a list of tokens using the following functions.
-(define (tokenize name)
-  (de-tag (flatten (map tokenize-string (trim (map list->string (map tag-spacer (map clean-up (read-file name)))))))))
+(define (paragrapher name)
+   (para-boxer (trim (map list->string (map tag-spacer (map clean-up (read-file "sample.html")))))))
 
+(define (tokenize)
+  (map tokenize-string (paragrapher 'x)))
 
 ;--------------------------------------------------------------------------------------------------------------
 ;; Adds a space before and after '<' and '>' to separate tags
@@ -47,25 +49,6 @@
                  (recur (open-output-string))))
           (else (write-char c out) (recur out)))))
 
-(define (chop-head xs)
-  (cond
-    [(null? xs) '()]
-    [(not (or (string-contains? (car xs) "< head >") (string-contains? (car xs) "< j >"))) (cons (car xs) (trim (cdr xs)))]
-    [else
-     (let ((disjunct (or (is-member "< /head >" xs) (is-member "< /j >" xs))))
-       (if (equal? disjunct #f)
-           (rev-chop (cdr xs))
-           (chop-head disjunct)))]))
-
-(define (rev-chop xs)
-  (cond
-    [(null? xs) '()]
-    [(or (string-contains? (car xs) "< head >") (string-contains? (car xs) "< j >")) (cons (car xs) (rev-trim (cdr xs)))]
-    [else
-     (let ((disjunct (or (is-member "< /head >" xs)  (is-member "< /j >" xs))))
-       (if (equal? disjunct #f)
-           (trim (cdr xs))
-           (rev-chop disjunct)))]))
 
 (define (trim xs)
   (cond
@@ -87,6 +70,7 @@
            (trim (cdr xs))
            (rev-trim disjunct)))]))
 
+
 ;; Removes all the HTML tags
 (define (de-tag list-of-tokens)
   (cond
@@ -100,10 +84,28 @@
     [(equal? (car xs) x) (cdr xs)]
     [else (is-member x (cdr xs))]))
 
+
+
+
+
+
+
+(define (para-boxer xs)
+  (cond
+    [(null? xs) (begin0 (unbox para) (set-box! para '()))]
+    [(string-contains? (car xs) "< p >") (begin (set-box! para (cons (car xs) (unbox para))) (box-up (cdr xs)))]
+    [else (para-boxer (cdr xs))]))
+     
+(define (box-up xs)
+  (cond
+  [(null? xs) (begin0 (unbox para) (set-box! para '()))]
+  [(string-contains? (car xs) "< /p >") (begin (set-box! para (cons (car xs) (unbox para))) (para-boxer (cdr xs)))]
+  [else (begin (set-box! para (cons (car xs) (unbox para))) (box-up (cdr xs)))]))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Information extraction ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Returns a list of important sentences from the document.
-(define (extract name)
-  (filter (important? months) (sentencize-doc (make-str (tokenize name)))))
+;(define (extract name)
+ ; (filter (important? months) (sentencize-doc (make-str (tokenize name)))))
 ;------------------------------------------------------------------------------------------------------------------------------
 (define (make-str tokens)
   (cond

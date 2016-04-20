@@ -10,6 +10,7 @@ After seeding with a list of relevant URLs, and a download limit (# pages) the s
     )
 
 Following commands to be used in DrRacket to run the spider
+
         (seed  '("http://www.RelevantURL.com" "http://www.AnotherOne.com")
 
         (crawl x) ; x is the maximum number of pages you wish to download

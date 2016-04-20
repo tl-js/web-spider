@@ -78,5 +78,42 @@
     [else (is-member x (cdr xs))]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Information extraction ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (make-str tokens)
+  (cond
+    [(null? tokens) ""]
+    [(not (non-empty-string? (car tokens))) (make-str (cdr tokens))]
+    [else (string-append (car tokens) " " (make-str (cdr tokens)))]))
 
-(define (sentencize tokens) 0)
+(define (sentencize-doc str)
+  (define in (open-input-string str))
+  (let recur ((out (open-output-string)))
+    (define c (read-char in))
+    (cond ((eof-object? c)
+           (list (get-output-string out)))
+          ((or  (char=? c #\.) (char=? c #\?) (char=? c #\!) (char=? c #\:))
+           (cons (get-output-string out)
+                 (recur (open-output-string))))
+          (else (write-char c out) (recur out)))))
+
+
+(define sentence (box ""))
+
+(define (sentencize tokens lst)
+  (cond
+    [(null? tokens) lst]
+    [(sent-end? (car tokens))
+        ;(not (non-empty-string? (car tokens))))
+     (cons (string-append (unbox sentence) " ") lst)]
+    [else (begin
+            (set-box! sentence (string-append (unbox sentence) " " (car tokens)))
+            (sentencize (cdr tokens) lst))]))
+
+;; Returns True if the last character is a (.)
+(define (sent-end? word)
+  (local [(define chars (string->list word))]
+  (cond
+    [(null? chars) #f]
+    [(null? (cdr chars)) (equal? (car chars) #\.)]
+    [else (sent-end? (list->string (cdr chars)))])))
+
+(sentencize-doc (make-str (tokenize "sample.html")))

@@ -1,8 +1,8 @@
 #lang plai
 
-
+(define specialChars '(#\" #\' #\$ #\% #\& #\( #\) #\* #\+ #\; #\= #\@ #\[ #\\ #\] #\^ #\_ #\` #\{ #\| #\} #\~ #\_ #\#))
 (define months '("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sept" "Oct" "Nov" "Dec" "January" "February" "March" "April" "May" "June" "July" "August" "September" "October" "November" "December"))
-
+(define para (box ""))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; FILE READING ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define all-files (map path->string (directory-list "data/")))
@@ -20,7 +20,9 @@
 
 ;; Accepts a document name and returns a list of tokens using the following functions.
 (define (tokenize name)
-  (flatten (map de-tag (map trim (map tokenize-string (map list->string (map tag-spacer (read-file name))))))))
+  (de-tag (flatten (map tokenize-string (trim (map list->string (map tag-spacer (map clean-up (read-file name)))))))))
+
+
 ;--------------------------------------------------------------------------------------------------------------
 ;; Adds a space before and after '<' and '>' to separate tags
 (define (tag-spacer x)
@@ -29,6 +31,9 @@
       [(null? chars) '()]
       [(or (eq? (car chars) #\<) (eq? (car chars) #\>)) (cons #\space (cons (car chars) (cons #\space (tag-spacer (list->string (cdr chars))))))]
       [else (cons (car chars) (tag-spacer (list->string (cdr chars))))])))
+
+(define (clean-up str)
+    (list->string (remove* specialChars (string->list str))))
 
 ;; Creates tokens from a string
 (define (tokenize-string str)
@@ -42,7 +47,26 @@
                  (recur (open-output-string))))
           (else (write-char c out) (recur out)))))
 
-;; Removes Style and Script
+(define (chop-head xs)
+  (cond
+    [(null? xs) '()]
+    [(not (or (string-contains? (car xs) "< head >") (string-contains? (car xs) "< j >"))) (cons (car xs) (trim (cdr xs)))]
+    [else
+     (let ((disjunct (or (is-member "< /head >" xs) (is-member "< /j >" xs))))
+       (if (equal? disjunct #f)
+           (rev-chop (cdr xs))
+           (chop-head disjunct)))]))
+
+(define (rev-chop xs)
+  (cond
+    [(null? xs) '()]
+    [(or (string-contains? (car xs) "< head >") (string-contains? (car xs) "< j >")) (cons (car xs) (rev-trim (cdr xs)))]
+    [else
+     (let ((disjunct (or (is-member "< /head >" xs)  (is-member "< /j >" xs))))
+       (if (equal? disjunct #f)
+           (trim (cdr xs))
+           (rev-chop disjunct)))]))
+
 (define (trim xs)
   (cond
     [(null? xs) '()]
@@ -53,7 +77,6 @@
            (rev-trim (cdr xs))
            (trim disjunct)))]))
 
-;; Helper for Style and Script Remover
 (define (rev-trim xs)
   (cond
     [(null? xs) '()]
@@ -78,6 +101,10 @@
     [else (is-member x (cdr xs))]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Information extraction ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Returns a list of important sentences from the document.
+(define (extract name)
+  (filter (important? months) (sentencize-doc (make-str (tokenize name)))))
+;------------------------------------------------------------------------------------------------------------------------------
 (define (make-str tokens)
   (cond
     [(null? tokens) ""]
@@ -95,25 +122,13 @@
                  (recur (open-output-string))))
           (else (write-char c out) (recur out)))))
 
+(define important?
+  (lambda (data-set)
+    (lambda (str)
+      (cond
+        [(null? data-set) #f]
+        [else (if (string-contains? str (car data-set))
+                  #t
+                  ((important? (cdr data-set)) str))]))))
 
-(define sentence (box ""))
 
-(define (sentencize tokens lst)
-  (cond
-    [(null? tokens) lst]
-    [(sent-end? (car tokens))
-        ;(not (non-empty-string? (car tokens))))
-     (cons (string-append (unbox sentence) " ") lst)]
-    [else (begin
-            (set-box! sentence (string-append (unbox sentence) " " (car tokens)))
-            (sentencize (cdr tokens) lst))]))
-
-;; Returns True if the last character is a (.)
-(define (sent-end? word)
-  (local [(define chars (string->list word))]
-  (cond
-    [(null? chars) #f]
-    [(null? (cdr chars)) (equal? (car chars) #\.)]
-    [else (sent-end? (list->string (cdr chars)))])))
-
-(sentencize-doc (make-str (tokenize "sample.html")))
